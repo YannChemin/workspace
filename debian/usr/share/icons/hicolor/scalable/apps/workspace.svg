@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Background -->
+  <rect x="8" y="8" width="112" height="112" rx="12" ry="12" fill="#2d2d2d"/>
+
+  <!-- Terminal window frame -->
+  <rect x="16" y="16" width="96" height="96" rx="8" ry="8" fill="#1a1a1a" stroke="#3584e4" stroke-width="2"/>
+
+  <!-- Title bar -->
+  <rect x="16" y="16" width="96" height="20" rx="8" ry="8" fill="#3584e4"/>
+  <rect x="16" y="28" width="96" height="8" fill="#3584e4"/>
+
+  <!-- Window buttons -->
+  <circle cx="30" cy="26" r="4" fill="#ed6a5e"/>
+  <circle cx="44" cy="26" r="4" fill="#f5bf4f"/>
+  <circle cx="58" cy="26" r="4" fill="#62c554"/>
+
+  <!-- Terminal prompt line 1 -->
+  <text x="24" y="56" font-family="monospace" font-size="12" fill="#62c554">$</text>
+  <rect x="36" y="46" width="48" height="12" rx="2" fill="#ffffff" opacity="0.8"/>
+
+  <!-- Terminal prompt line 2 -->
+  <text x="24" y="76" font-family="monospace" font-size="12" fill="#62c554">$</text>
+  <rect x="36" y="66" width="32" height="12" rx="2" fill="#ffffff" opacity="0.6"/>
+
+  <!-- Cursor -->
+  <rect x="24" y="86" width="8" height="14" fill="#3584e4">
+    <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
+  </rect>
+</svg>
