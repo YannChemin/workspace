@@ -18,7 +18,12 @@ find_library(QTERMWIDGET_LIBRARY
 )
 
 # CREATE TARGET FIRST
-add_executable(workspace main.cpp mainwindow.cpp)
+add_executable(workspace
+    main.cpp
+    mainwindow.cpp
+    gisdisplaywidget.cpp
+    osmtileprovider.cpp
+)
 
 # THEN configure it
 target_link_libraries(workspace

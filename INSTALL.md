@@ -10,6 +10,7 @@ sudo apt install -y \
     build-essential \
     cmake \
     qt6-base-dev \
+    libqt6network6-dev \
     libgdal-dev \
     qtermwidget6-dev \
     libx11-dev \
@@ -75,6 +76,7 @@ The following packages are required to run the application:
 
 - libqt6core6
 - libqt6widgets6
+- libqt6network6
 - libgdal34
 - libqtermwidget6-0
 - libx11-6

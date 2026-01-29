@@ -3,8 +3,7 @@
 
 #include <QMainWindow>
 #include <QTreeView>
-#include <QLabel>
-#include <QFileSystemModel>  // Qt6 replacement for QDirModel
+#include <QFileSystemModel>
 #include <qtermwidget6/qtermwidget.h>
 #include <QSplitter>
 #include <QSettings>
@@ -12,11 +11,10 @@
 #include <QShortcut>
 #include <QResizeEvent>
 #include <QKeyEvent>
-#include <QScrollArea>
-#include <gdal_priv.h>
-#include <cpl_conv.h>   // GDAL utilities
-
 #include <QDir>
+#include <gdal_priv.h>
+
+class GISDisplayWidget;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -26,7 +24,6 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
-    void resizeEvent(QResizeEvent *event) override;
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
@@ -35,6 +32,7 @@ private slots:
     void zoomIn();
     void zoomOut();
     void zoomReset();
+    void onLoadError(const QString &msg);
 
 private:
     void setupUI();
@@ -42,19 +40,15 @@ private:
     void changeTerminalDir(const QString &path);
     void saveState();
     void restoreState();
-    void updateImageDisplay();
 
     QTreeView *fileTree;
-    QScrollArea *scrollArea;
-    QLabel *imagePreview;
+    GISDisplayWidget *gisDisplay;
     QTermWidget *terminal;
-    QFileSystemModel *dirModel;  // Qt6 version
+    QFileSystemModel *dirModel;
     QSplitter *splitter;
     QSplitter *topSplitter;
 
     QString lastImagePath;
-    QPixmap currentPixmap;  // Store original pixmap for proper resizing
-    double zoomFactor;      // Current zoom level (1.0 = fit to window)
 };
 
 #endif

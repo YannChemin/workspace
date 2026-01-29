@@ -2,14 +2,15 @@
 
 A Qt6-based desktop application featuring a file browser, image preview panel with GeoTIFF support, and an integrated terminal.
 
-![Workspace sreenshot](Screenshot.png)
+![Workspace sreenshot](Screenshot From 2026-01-29 07-37-45.png)
 
 ## Features
 
 - **File Browser** - Navigate your home directory with a clean tree view
 - **Image Preview** - View images with automatic scaling and aspect ratio preservation
-- **Zoom & Pan** - Zoom in/out on images with scroll support when zoomed
+- **Zoom & Pan** - Zoom in/out with LOD rendering (detail updates on zoom, not pixel scaling)
 - **GeoTIFF Support** - Load and display GeoTIFF files via GDAL with 2% histogram stretch
+- **OSM Background** - Automatic OpenStreetMap tile background for georeferenced data
 - **Integrated Terminal** - Built-in terminal panel for command-line operations
 - **State Persistence** - Remembers your last folder and image between sessions
 - **Dark Theme** - Modern dark UI inspired by GNOME Adwaita
@@ -29,8 +30,9 @@ A Qt6-based desktop application featuring a file browser, image preview panel wi
 ## Image Viewing
 
 - **Fit to window**: Images automatically scale to fit the preview panel
-- **Zoom in/out**: Use Ctrl++ and Ctrl+- to zoom (10% to 1000% range)
-- **Pan**: When zoomed in, use scrollbars or mouse wheel to navigate
+- **Zoom in/out**: Use Ctrl++/Ctrl+- or mouse wheel to zoom (10% to 1000% range)
+- **LOD Rendering**: Zooming re-renders at the current zoom level using GDAL's overview/decimation support - details sharpen when zooming in, not just pixel enlargement
+- **Pan**: Click and drag to pan when zoomed in
 - **Reset**: Press Ctrl+0 to return to fit-to-window mode
 
 ## GeoTIFF Display
@@ -57,13 +59,32 @@ GeoJSON vector files are rendered using GDAL/OGR:
 
 - **Vector Rendering**: Points, lines, polygons, and multi-geometries are rendered with antialiasing
 - **Automatic Scaling**: Rendering scales to fit extent, maximum 5000x5000 pixels
-- **Preview Caching**: Rendered previews are cached as `.geojson.png` sidecar files
-- **Cache Validation**: Sidecar previews are regenerated if source file is modified
-- **Dark Theme**: Rendering uses blue fills/outlines on dark background matching the app theme
+- **High Contrast Styling**: Dark red outlines and semi-transparent fills for visibility on OSM backgrounds
+
+## OSM Background Tiles
+
+Georeferenced data is displayed over OpenStreetMap tile backgrounds:
+
+- **Automatic Tile Fetching**: Tiles are fetched asynchronously based on data extent
+- **Zoom Level Selection**: Appropriate tile zoom level calculated from data extent and display size
+- **Disk Caching**: Tiles are cached locally in `~/.cache/workspace/osm_tiles/` for offline use
+- **Memory Caching**: Recently used tiles kept in memory for fast redraw
+- **Geographic Alignment**: Data is correctly positioned over the OSM background using CRS transformation
+
+## Architecture
+
+The GIS display functionality is organized into modular components:
+
+| File | Purpose |
+|------|---------|
+| `gisdatatypes.h` | Shared data structures (RGBBands, StretchParams, GeoTIFFInfo, etc.) |
+| `osmtileprovider.h/cpp` | Async OSM tile fetching with memory + disk cache |
+| `gisdisplaywidget.h/cpp` | Core GIS widget with LOD rendering, zoom/pan, vector overlay |
+| `mainwindow.h/cpp` | Application shell with file browser and terminal |
 
 ## Dependencies
 
-- Qt6 (Core, Widgets)
+- Qt6 (Core, Widgets, Network)
 - GDAL
 - QTermWidget6
 - X11, xkbcommon, xkbfile
