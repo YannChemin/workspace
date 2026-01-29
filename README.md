@@ -2,6 +2,8 @@
 
 A Qt6-based desktop application featuring a file browser, image preview panel with GeoTIFF support, and an integrated terminal.
 
+![Workspace sreenshot](Screenshot From 2026-01-29 07-37-45.png)
+
 ## Features
 
 - **File Browser** - Navigate your home directory with a clean tree view
