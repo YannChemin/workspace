@@ -1,0 +1,10 @@
+Package: workspace
+Version: 1.0.0
+Section: graphics
+Priority: optional
+Architecture: amd64
+Depends: libqt6core6, libqt6widgets6, libgdal36, libqtermwidget6-2, libx11-6, libxkbcommon0, libxkbfile1
+Maintainer: Yann <dr.yann.chemin@gmail.com>
+Description: Workspace - File browser with image preview and terminal
+ A Qt6-based workspace application featuring a file browser,
+ image preview panel with GeoTIFF support, and an integrated terminal.
