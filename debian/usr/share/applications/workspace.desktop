@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Workspace
+Comment=File browser with image preview and terminal
+Exec=workspace
+Icon=workspace
+Terminal=false
+Type=Application
+Categories=Utility;FileTools;Graphics;
+Keywords=file;browser;image;terminal;preview;
+StartupNotify=true
