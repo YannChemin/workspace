@@ -532,9 +532,9 @@ static QImage renderGeoJSON(const QString &path, int maxSize = GEOJSON_MAX_RENDE
 
     qDebug() << "Rendering GeoJSON to" << imgWidth << "x" << imgHeight;
 
-    // Create image with white background
+    // Create image with transparent background
     QImage image(imgWidth, imgHeight, QImage::Format_ARGB32);
-    image.fill(QColor(30, 30, 30));  // Dark background matching app theme
+    image.fill(Qt::transparent);  // Transparent background for OSM visibility
 
     QPainter painter(&image);
     painter.setRenderHint(QPainter::Antialiasing, true);
@@ -550,11 +550,11 @@ static QImage renderGeoJSON(const QString &path, int maxSize = GEOJSON_MAX_RENDE
         return QPointF(px, py);
     };
 
-    // Style settings
-    QPen outlinePen(QColor(65, 165, 238));  // Blue outline
+    // Style settings - optimized for bright OSM background
+    QPen outlinePen(QColor(180, 30, 30));  // Dark red outline for high contrast
     outlinePen.setWidth(2);
-    QBrush fillBrush(QColor(65, 165, 238, 80));  // Semi-transparent blue fill
-    QPen pointPen(QColor(238, 130, 65));  // Orange for points
+    QBrush fillBrush(QColor(180, 30, 30, 100));  // Semi-transparent dark red fill
+    QPen pointPen(QColor(30, 30, 180));  // Dark blue for points
     pointPen.setWidth(6);
     pointPen.setCapStyle(Qt::RoundCap);
 
@@ -1003,6 +1003,146 @@ static QImage compositeWithOSMBackground(const QImage &geotiff, const GeoTIFFInf
     return finalImage;
 }
 
+// Structure to hold GeoJSON geographic info
+struct GeoJSONInfo {
+    double minLon, maxLon, minLat, maxLat;  // WGS84 bounds
+    bool hasValidBounds;
+};
+
+// Get geographic bounds of a GeoJSON file in WGS84
+static GeoJSONInfo getGeoJSONBounds(const QString &path) {
+    GeoJSONInfo info;
+    info.hasValidBounds = false;
+    info.minLon = 180.0;
+    info.maxLon = -180.0;
+    info.minLat = 90.0;
+    info.maxLat = -90.0;
+
+    GDALDataset *dataset = (GDALDataset*)GDALOpenEx(
+        path.toStdString().c_str(),
+        GDAL_OF_VECTOR | GDAL_OF_READONLY,
+        nullptr, nullptr, nullptr
+    );
+
+    if (!dataset) {
+        qDebug() << "Failed to open GeoJSON for bounds:" << path;
+        return info;
+    }
+
+    // Get the first layer
+    OGRLayer *layer = dataset->GetLayer(0);
+    if (!layer) {
+        qDebug() << "No layers in GeoJSON for bounds";
+        GDALClose(dataset);
+        return info;
+    }
+
+    // Get extent
+    OGREnvelope extent;
+    if (layer->GetExtent(&extent) != OGRERR_NONE) {
+        qDebug() << "Failed to get GeoJSON extent";
+        GDALClose(dataset);
+        return info;
+    }
+
+    info.minLon = extent.MinX;
+    info.maxLon = extent.MaxX;
+    info.minLat = extent.MinY;
+    info.maxLat = extent.MaxY;
+    info.hasValidBounds = true;
+
+    qDebug() << "GeoJSON bounds (WGS84): lon" << info.minLon << "-" << info.maxLon
+             << "lat" << info.minLat << "-" << info.maxLat;
+
+    GDALClose(dataset);
+    return info;
+}
+
+// Composite GeoJSON over OSM background, filling the display panel
+static QImage compositeGeoJSONWithOSMBackground(const QImage &geojson, const GeoJSONInfo &info, int displayWidth, int displayHeight) {
+    if (!info.hasValidBounds) {
+        return geojson;  // No bounds info, can't add OSM background
+    }
+
+    if (displayWidth <= 0 || displayHeight <= 0) {
+        return geojson;
+    }
+
+    // Calculate the geographic extent needed to fill the display panel
+    // while keeping the GeoJSON centered
+    double geoLonRange = info.maxLon - info.minLon;
+    double geoLatRange = info.maxLat - info.minLat;
+    double geoCenterLon = (info.minLon + info.maxLon) / 2.0;
+    double geoCenterLat = (info.minLat + info.maxLat) / 2.0;
+
+    // Calculate aspect ratios
+    double displayAspect = static_cast<double>(displayWidth) / displayHeight;
+    double geoAspect = geoLonRange / geoLatRange;
+
+    // Expand the geographic extent to match display aspect ratio
+    // and add buffer so GeoJSON doesn't touch edges
+    double bgLonRange, bgLatRange;
+    double bufferFactor = 1.5;  // GeoJSON will occupy ~67% of the view
+
+    if (geoAspect > displayAspect) {
+        // GeoJSON is wider than display - expand latitude
+        bgLonRange = geoLonRange * bufferFactor;
+        bgLatRange = bgLonRange / displayAspect;
+    } else {
+        // GeoJSON is taller than display - expand longitude
+        bgLatRange = geoLatRange * bufferFactor;
+        bgLonRange = bgLatRange * displayAspect;
+    }
+
+    double bgMinLon = std::max(-180.0, geoCenterLon - bgLonRange / 2.0);
+    double bgMaxLon = std::min(180.0, geoCenterLon + bgLonRange / 2.0);
+    double bgMinLat = std::max(-85.0, geoCenterLat - bgLatRange / 2.0);
+    double bgMaxLat = std::min(85.0, geoCenterLat + bgLatRange / 2.0);
+
+    // Recalculate actual ranges after clamping
+    bgLonRange = bgMaxLon - bgMinLon;
+    bgLatRange = bgMaxLat - bgMinLat;
+
+    // Get OSM background tiles
+    QImage tileBackground = createOSMBackground(bgMinLon, bgMaxLon, bgMinLat, bgMaxLat, displayWidth, displayHeight);
+    if (tileBackground.isNull()) {
+        return geojson;
+    }
+
+    // Create final image at exact display size
+    QImage finalImage(displayWidth, displayHeight, QImage::Format_ARGB32);
+    finalImage.fill(QColor(30, 30, 30));
+
+    // Scale the tile background to fill the display
+    QImage scaledBackground = tileBackground.scaled(displayWidth, displayHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+    QPainter painter(&finalImage);
+    painter.drawImage(0, 0, scaledBackground);
+
+    // Calculate where the GeoJSON should be placed on the final image
+    double leftPct = (info.minLon - bgMinLon) / bgLonRange;
+    double rightPct = (info.maxLon - bgMinLon) / bgLonRange;
+    double topPct = (bgMaxLat - info.maxLat) / bgLatRange;
+    double bottomPct = (bgMaxLat - info.minLat) / bgLatRange;
+
+    int destX = static_cast<int>(leftPct * displayWidth);
+    int destY = static_cast<int>(topPct * displayHeight);
+    int destWidth = static_cast<int>((rightPct - leftPct) * displayWidth);
+    int destHeight = static_cast<int>((bottomPct - topPct) * displayHeight);
+
+    // Ensure minimum size
+    destWidth = std::max(destWidth, 10);
+    destHeight = std::max(destHeight, 10);
+
+    // Scale and draw the GeoJSON
+    QImage scaledGeojson = geojson.scaled(destWidth, destHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    painter.drawImage(destX, destY, scaledGeojson);
+    painter.end();
+
+    qDebug() << "Composited GeoJSON over OSM background at" << displayWidth << "x" << displayHeight;
+    return finalImage;
+}
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
     GDALAllRegister();  // Init GDAL
 
@@ -1334,7 +1474,16 @@ void MainWindow::loadImage(const QString &path) {
         // GeoJSON vector data - render to image
         QImage rendered = loadGeoJSONPreview(path);
         if (!rendered.isNull()) {
-            currentPixmap = QPixmap::fromImage(rendered);
+            // Get geographic bounds for OSM background
+            GeoJSONInfo geoInfo = getGeoJSONBounds(path);
+
+            // Get display size for OSM background calculation
+            QSize displaySize = scrollArea->viewport()->size();
+
+            // Composite with OSM background if we have valid bounds
+            QImage finalImage = compositeGeoJSONWithOSMBackground(rendered, geoInfo, displaySize.width(), displaySize.height());
+
+            currentPixmap = QPixmap::fromImage(finalImage);
             updateImageDisplay();
             lastImagePath = path;
         } else {
